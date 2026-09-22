@@ -39,7 +39,7 @@ def export_breakout_chart(symbol, target_date, df, pre_days=20, post_days=25):
     print(f"-> Đã xuất: {output_path}")
 
 # ================= CHƯƠNG TRÌNH CHÍNH =================
-symbol = "HPG"
+symbol = "MSN"
 df = pd.read_csv(f"data/{symbol}_data.csv")
 df['time'] = pd.to_datetime(df['time'])
 df.set_index('time', inplace=True)
