@@ -23,6 +23,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas requests mplfinance ipython
           pip install --no-deps git+https://github.com/thinh-vu/vnstock.git
+          mkdir vnai
+          echo "from unittest.mock import MagicMock; import sys; sys.modules[__name__] = MagicMock()" > vnai/__init__.py
 
       - name: Fetch Market Data
         run: python src/fetch_vn30.py
