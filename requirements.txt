@@ -1,5 +1,6 @@
+# --- Thu vien loi ---
 vnstock
 pandas
+requests
 mplfinance>=0.12.0
 ipython
-requests
