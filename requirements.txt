@@ -1,5 +1,5 @@
-vnstock>=4.0.0
-pandas>=2.0.0
+vnstock
+pandas
 mplfinance>=0.12.0
 ipython
 requests
