@@ -21,7 +21,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas vnstock requests mplfinance ipython
+          pip install --no-cache-dir pandas git+https://github.com/thinh-vu/vnstock.git requests mplfinance ipython
 
       - name: Fetch Market Data
         run: python src/fetch_vn30.py
