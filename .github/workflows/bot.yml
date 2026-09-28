@@ -2,8 +2,7 @@ name: VN30 Quant Scanner
 
 on:
   schedule:
-    # Chạy vào 08:15 UTC (Tương đương 15:15 giờ Việt Nam), từ Thứ 2 đến Thứ 6
-    - cron: '15 8 * * 1-5'
+    - cron: '30 9 * * 1-5'
   workflow_dispatch: # Cho phép bạn bấm chạy thủ công bằng tay trên Web
 
 jobs:
