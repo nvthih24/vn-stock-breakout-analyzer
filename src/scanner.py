@@ -41,9 +41,13 @@ def scan_market(data_dir="data"):
             last_row = df.iloc[-1]
             
             if last_row['rvol'] >= 2.0 and last_row['pct_change'] >= 2.0:
+                # Tính giá Cắt lỗ: Thủng điểm thấp nhất của cây nến bùng nổ
+                stoploss = round(last_row['low'], 2)
+                
                 results.append(
                     f"🟢 <b>{symbol}</b> | Giá: {round(last_row['close'], 2)} (+{round(last_row['pct_change'], 2)}%)\n"
-                    f"📦 Vol: {int(last_row['volume']):,} (RVol: {round(last_row['rvol'], 2)}x)"
+                    f"📦 Vol: {int(last_row['volume']):,} (RVol: {round(last_row['rvol'], 2)}x)\n"
+                    f"🛑 Cắt lỗ: Kích hoạt bán nếu thủng {stoploss} (Đáy nến)"
                 )
         except Exception as e:
             pass
