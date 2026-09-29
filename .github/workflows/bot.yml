@@ -2,7 +2,7 @@ name: VN30 Quant Scanner
 
 on:
   schedule:
-    - cron: '30 9 * * 1-5'
+    - cron: '27 9 * * 1-5'
   workflow_dispatch: # Cho phép bạn bấm chạy thủ công bằng tay trên Web
 
 jobs:
