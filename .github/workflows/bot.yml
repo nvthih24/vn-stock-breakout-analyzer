@@ -25,7 +25,9 @@ jobs:
           echo "import sys; from unittest.mock import MagicMock; sys.modules['vnai'] = MagicMock()" > src/vnai.py
 
       - name: Fetch Market Data
-        run: python src/fetch_vn30.py
+        run: |
+          rm -rf data/*.csv
+          python src/fetch_vn30.py
 
       - name: Scan & Send Telegram
         env:
