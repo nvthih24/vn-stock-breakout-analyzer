@@ -75,7 +75,5 @@ Tạo token Telegram Bot và Chat ID của ông, sau đó cấu hình vào GitHu
 python src/fetch_data.py
 python src/scan_breakout.py
 ```
-```text
 Developed by Nguyen Van Thinh — Software Engineer & Quant Trader.
-```
 ---
