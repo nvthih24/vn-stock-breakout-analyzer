@@ -67,7 +67,7 @@ cd vn-stock-breakout-analyzer
 pip install -r requirements.txt
 ```
 3. Cấu hình biến môi trường (Environment Variables):
-```bash
+```text
 Tạo token Telegram Bot và Chat ID của ông, sau đó cấu hình vào GitHub Secrets (TELEGRAM_TOKEN, TELEGRAM_CHAT_ID) nếu chạy trên Cloud, hoặc cấu hình trực tiếp trong file chạy cục bộ.
 ```
 4. Chạy thủ công:
@@ -75,6 +75,7 @@ Tạo token Telegram Bot và Chat ID của ông, sau đó cấu hình vào GitHu
 python src/fetch_data.py
 python src/scan_breakout.py
 ```
+```text
 Developed by Nguyen Van Thinh — Software Engineer & Quant Trader.
-
+```
 ---
