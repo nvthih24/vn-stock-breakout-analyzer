@@ -61,18 +61,20 @@ vn-stock-breakout-analyzer/
 ```bash
 git clone [https://github.com/nvthih24/vn-stock-breakout-analyzer.git](https://github.com/nvthih24/vn-stock-breakout-analyzer.git)
 cd vn-stock-breakout-analyzer
-
+```
 2. Cài đặt các thư viện cần thiết:
 ```bash
 pip install -r requirements.txt
-
+```
 3. Cấu hình biến môi trường (Environment Variables):
 ```bash
 Tạo token Telegram Bot và Chat ID của ông, sau đó cấu hình vào GitHub Secrets (TELEGRAM_TOKEN, TELEGRAM_CHAT_ID) nếu chạy trên Cloud, hoặc cấu hình trực tiếp trong file chạy cục bộ.
-
+```
 4. Chạy thủ công:
 ```bash
 python src/fetch_data.py
 python src/scan_breakout.py
-
+```
 Developed by Nguyen Van Thinh — Software Engineer & Quant Trader.
+
+---
