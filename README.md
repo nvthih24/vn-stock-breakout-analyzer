@@ -52,7 +52,11 @@ vn-stock-breakout-analyzer/
 ├── requirements.txt              # Danh sách thư viện phụ thuộc
 └── run_scanner.bat               # Script chạy nhanh trên môi trường Local (Windows)
 
+```
+---
+
 ## ⚙️ 5. Hướng dẫn cài đặt & Vận hành (Quick Start)
+
 1. Clone repository về máy:
 ```bash
 git clone [https://github.com/nvthih24/vn-stock-breakout-analyzer.git](https://github.com/nvthih24/vn-stock-breakout-analyzer.git)
