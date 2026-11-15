@@ -76,4 +76,3 @@ python src/fetch_data.py
 python src/scan_breakout.py
 ```
 Developed by Nguyen Van Thinh — Software Engineer & Quant Trader.
----
