@@ -26,7 +26,7 @@ jobs:
       - name: Fetch Market Data
         run: |
           rm -rf data/*.csv
-          python src/fetch_vn30.py
+          PYTHONPATH=. python src/fetch_vn30.py
 
       - name: Scan & Send Telegram
         env:
