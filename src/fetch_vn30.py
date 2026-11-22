@@ -19,17 +19,24 @@ VN30_SYMBOLS = [
 ]
 
 def fetch_history(symbol, start_date="2024-01-01", end_date=None):
-    """Lấy dữ liệu theo chuẩn Quote mới hoặc fallback về Vnstock cũ"""
+    """Lấy dữ liệu ưu tiên VCI, tự fallback sang provider khả dụng nếu thiếu VCI"""
     if end_date is None:
         end_date = datetime.now().strftime("%Y-%m-%d")
         
-    if Quote is not None:
-        q = Quote(symbol=symbol, source="VCI")
-        return q.history(start=start_date, end=end_date, interval="1D")
-    else:
-        stock = Vnstock().stock(symbol=symbol, source="VCI")
-        return stock.quote.history(start=start_date, end=end_date, interval="1D")
-
+    last_err = None
+    for source in ("VCI", "fmp"):
+        try:
+            if Quote is not None:
+                q = Quote(symbol=symbol, source=source)
+                return q.history(start=start_date, end=end_date, interval="1D")
+            stock = Vnstock().stock(symbol=symbol, source=source)
+            return stock.quote.history(start=start_date, end=end_date, interval="1D")
+        except Exception as e:
+            last_err = e
+            if "not found" in str(e).lower():
+                continue
+            raise
+    raise last_err
 def main():
     output_dir = "data"
     os.makedirs(output_dir, exist_ok=True)
@@ -64,8 +71,9 @@ def main():
                     break
             except Exception as e:
                 err_msg = str(e)
-                if "Rate limit" in err_msg or "rate limit" in err_msg or attempt < max_retries:
-                    print(f"⏳ Chạm giới hạn, nghỉ 25s trước khi thử lại...")
+                is_rate_limit = any(k in err_msg.lower() for k in ("rate limit", "429", "too many requests"))
+                if is_rate_limit and attempt < max_retries:
+                    print("⏳ Chạm giới hạn, nghỉ 25s trước khi thử lại...")
                     time.sleep(25)
                 else:
                     print(f"❌ Lỗi: {err_msg}")
