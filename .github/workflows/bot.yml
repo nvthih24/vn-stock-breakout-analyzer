@@ -27,6 +27,10 @@ jobs:
         run: |
           rm -rf data/*.csv
           PYTHONPATH=.:src python -c "
+          import sys
+          from unittest.mock import MagicMock
+          sys.modules.setdefault('vnstock_ezchart', MagicMock())
+          sys.modules.setdefault('vnstock_chart', MagicMock())
           from vnstock.explorer.vci import quote as vci_quote
           print('vci_quote attrs:', [x for x in dir(vci_quote) if not x.startswith('_')])
           from vnstock.core import registry
