@@ -26,21 +26,7 @@ jobs:
       - name: Fetch Market Data
         run: |
           rm -rf data/*.csv
-          PYTHONPATH=.:src python -c "
-          import sys
-          from unittest.mock import MagicMock
-          sys.modules.setdefault('vnstock_ezchart', MagicMock())
-          sys.modules.setdefault('vnstock_chart', MagicMock())
-
-          from vnstock.explorer.vci.quote import Quote as VCIQuote
-          q = VCIQuote(symbol='ACB')
-          print('methods:', [m for m in dir(q) if 'hist' in m or 'quote' in m or not m.startswith('_')])
-          df = q.history(start='2024-01-01', end='2026-11-22', interval='1D')
-          print('type:', type(df), 'empty:', getattr(df, 'empty', None))
-          if df is not None and not getattr(df, 'empty', True):
-            print(df.tail(2))
-          "
-        # PYTHONPATH=.:src python src/fetch_vn30.py
+          PYTHONPATH=.:src python src/fetch_vn30.py
 
           
       - name: Scan & Send Telegram
