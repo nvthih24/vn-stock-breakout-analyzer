@@ -27,7 +27,7 @@ jobs:
         run: |
           rm -rf data/*.csv
           PYTHONPATH=. python src/fetch_vn30.py
-
+          PYTHONPATH=. python -c "import os, vnstock; root = os.path.dirname(vnstock.__file__); print('path:', root); [print(r, dirs, [f for f in files if f.endswith('.py')]) for r, dirs, files in os.walk(root) if os.path.relpath(r, root).count(os.sep) <= 2]"
       - name: Scan & Send Telegram
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
