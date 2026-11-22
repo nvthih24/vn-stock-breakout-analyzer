@@ -1,10 +1,21 @@
 import os
+import sys
 import time
 from datetime import datetime
+from unittest.mock import MagicMock
 import pandas as pd
+
+# Mock thư viện chart để vnstock nạp đầy đủ explorer/VCI trên runner
+sys.modules.setdefault("vnstock_ezchart", MagicMock())
+sys.modules.setdefault("vnstock_chart", MagicMock())
 
 # Tắt thông báo telemetry để terminal gọn gàng
 os.environ["VNSTOCK_TELEMETRY"] = "off"
+
+try:
+    from vnstock.explorer.vci.quote import Quote as VCIQuote
+except ImportError:
+    VCIQuote = None
 
 try:
     from vnstock.api.quote import Quote
@@ -23,20 +34,17 @@ def fetch_history(symbol, start_date="2024-01-01", end_date=None):
     if end_date is None:
         end_date = datetime.now().strftime("%Y-%m-%d")
         
-    last_err = None
-    for source in ("VCI", "fmp"):
-        try:
-            if Quote is not None:
-                q = Quote(symbol=symbol, source=source)
-                return q.history(start=start_date, end=end_date, interval="1D")
-            stock = Vnstock().stock(symbol=symbol, source=source)
-            return stock.quote.history(start=start_date, end=end_date, interval="1D")
-        except Exception as e:
-            last_err = e
-            if "not found" in str(e).lower():
-                continue
-            raise
-    raise last_err
+    if VCIQuote is not None:
+        q = VCIQuote(symbol=symbol)
+        return q.history(start=start_date, end=end_date, interval="1D")
+
+    if Quote is not None:
+        q = Quote(symbol=symbol, source="VCI")
+        return q.history(start=start_date, end=end_date, interval="1D")
+
+    stock = Vnstock().stock(symbol=symbol, source="VCI")
+    return stock.quote.history(start=start_date, end=end_date, interval="1D")
+
 def main():
     output_dir = "data"
     os.makedirs(output_dir, exist_ok=True)

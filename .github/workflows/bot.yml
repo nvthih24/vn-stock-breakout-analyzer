@@ -26,17 +26,8 @@ jobs:
       - name: Fetch Market Data
         run: |
           rm -rf data/*.csv
-          PYTHONPATH=.:src python -c "
-          import sys
-          from unittest.mock import MagicMock
-          sys.modules.setdefault('vnstock_ezchart', MagicMock())
-          sys.modules.setdefault('vnstock_chart', MagicMock())
-          from vnstock.explorer.vci import quote as vci_quote
-          print('vci_quote attrs:', [x for x in dir(vci_quote) if not x.startswith('_')])
-          from vnstock.core import registry
-          print('registry attrs:', [x for x in dir(registry) if not x.startswith('_')])
-          "
-          PYTHONPATH=.:src python src/fetch_vn30.py || true
+          PYTHONPATH=.:src python src/fetch_vn30.py
+          
       - name: Scan & Send Telegram
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
