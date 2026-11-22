@@ -27,28 +27,18 @@ jobs:
         run: |
           rm -rf data/*.csv
           PYTHONPATH=.:src python -c "
-          import sys, traceback
+          import sys, inspect
           from unittest.mock import MagicMock
           sys.modules.setdefault('vnstock_ezchart', MagicMock())
           sys.modules.setdefault('vnstock_chart', MagicMock())
 
           from vnstock.explorer.vci.quote import Quote as VCIQuote
+          print('class history:', type(VCIQuote.history), getattr(VCIQuote.history, '__wrapped__', None))
           q = VCIQuote(symbol='ACB')
-          try:
-            df = q.history(start='2024-01-01', end='2026-11-22', interval='1D')
-            print('history df:', type(df))
-          except Exception:
-            traceback.print_exc()
-
-          print('_history attr:', getattr(q, '_history', 'MISSING'))
-          if callable(getattr(q, '_history', None)):
-              try:
-                  df2 = q._history(start='2024-01-01', end='2026-11-22', interval='1D')
-                  print('_history df:', type(df2))
-              except Exception:
-                  traceback.print_exc()
+          print('instance history:', type(q.history), q.history)
+          print(inspect.getsource(VCIQuote.history)[:1200])
           "
-          
+
       - name: Scan & Send Telegram
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
