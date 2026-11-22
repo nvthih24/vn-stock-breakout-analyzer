@@ -26,11 +26,7 @@ jobs:
       - name: Fetch Market Data
         run: |
           rm -rf data/*.csv
-          python -c "
-          import inspect
-          from vnstock.explorer.vci import quote as vci_q
-          print(inspect.getsource(vci_q.Quote))
-          " | grep -E "http|url|api|chart|history" -i -C 2
+          grep -nE "http|url|api|chart|history|def " vnstock/explorer/vci/quote.py | head -n 80
 
       - name: Scan & Send Telegram
         env:
