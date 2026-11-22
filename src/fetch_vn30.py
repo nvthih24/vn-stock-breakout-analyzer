@@ -12,16 +12,18 @@ sys.modules.setdefault("vnstock_chart", MagicMock())
 # Tắt thông báo telemetry để terminal gọn gàng
 os.environ["VNSTOCK_TELEMETRY"] = "off"
 
-try:
-    from vnstock.explorer.vci.quote import Quote as VCIQuote
-except ImportError:
-    VCIQuote = None
+from vnstock.explorer.vci import quote as vci_quote
+from vnstock.explorer.vci.quote import Quote as VCIQuote
 
-try:
-    from vnstock.api.quote import Quote
-except ImportError:
-    from vnstock import Vnstock
-    Quote = None
+# Nếu optimize_execution bị mock thành MagicMock, trả về hàm pass-through để gọi thực thi bình thường
+if isinstance(getattr(vci_quote, "optimize_execution", None), MagicMock):
+    def _passthrough_optimize_execution(func=None, *args, **kwargs):
+        if callable(func):
+            def _wrapper(*f_args, **f_kwargs):
+                return func(*f_args, **f_kwargs)
+            return _wrapper
+        return lambda f: f
+    vci_quote.optimize_execution = _passthrough_optimize_execution
 
 VN30_SYMBOLS = [
     "ACB", "BCM", "BID", "BVH", "CTG", "FPT", "GAS", "GVR", "HDB", "HPG",
@@ -30,20 +32,18 @@ VN30_SYMBOLS = [
 ]
 
 def fetch_history(symbol, start_date="2024-01-01", end_date=None):
-    """Lấy dữ liệu ưu tiên VCI, tự fallback sang provider khả dụng nếu thiếu VCI"""
+    """Lấy dữ liệu lịch sử ngày từ VCIQuote"""
     if end_date is None:
         end_date = datetime.now().strftime("%Y-%m-%d")
-        
-    if VCIQuote is not None:
-        q = VCIQuote(symbol=symbol)
-        return q.history(start=start_date, end=end_date, interval="1D")
 
-    if Quote is not None:
-        q = Quote(symbol=symbol, source="VCI")
-        return q.history(start=start_date, end=end_date, interval="1D")
+    q = VCIQuote(symbol=symbol)
+    df = q.history(start=start_date, end=end_date, interval="1D")
 
-    stock = Vnstock().stock(symbol=symbol, source="VCI")
-    return stock.quote.history(start=start_date, end=end_date, interval="1D")
+    # Phòng trường hợp decorator vẫn trả về MagicMock
+    if isinstance(df, MagicMock) and hasattr(q, "_history"):
+        df = q._history(start=start_date, end=end_date, interval="1D")
+
+    return df
 
 def main():
     output_dir = "data"
