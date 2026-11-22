@@ -26,8 +26,7 @@ jobs:
       - name: Fetch Market Data
         run: |
           rm -rf data/*.csv
-          grep -n "_TRADING_URL" vnstock/explorer/vci/quote.py
-          sed -n '270,315p' vnstock/explorer/vci/quote.py
+          PYTHONPATH=.:src python src/fetch_vn30.py
 
       - name: Scan & Send Telegram
         env:

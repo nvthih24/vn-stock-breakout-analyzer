@@ -10,7 +10,7 @@ VN30_SYMBOLS = [
     "TCB", "TPB", "VCB", "VHM", "VIB", "VIC", "VJC", "VNM", "VPB", "VRE"
 ]
 
-VCI_CHART_URL = "https://trading.vietcap.com.vn/api/chart/OHChart/gap-chart"
+VCI_CHART_URL = "https://trading.vietcap.com.vn/api/chart/OHLCChart/gap-chart"
 VCI_HEADERS = {
     "User-Agent": "Mozilla/5.0",
     "Accept": "application/json, text/plain, */*",
@@ -20,28 +20,29 @@ VCI_HEADERS = {
 }
 
 
-def _to_unix_ts(date_str: str, end_of_day: bool = False) -> int:
-    dt = datetime.strptime(date_str, "%Y-%m-%d")
-    if end_of_day:
-        dt = dt.replace(hour=23, minute=59, second=59)
+def _to_end_stamp(end_date: str | None = None) -> int:
+    if end_date is None:
+        dt = datetime.now().replace(hour=23, minute=59, second=59)
+    else:
+        dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
     return int(dt.timestamp())
 
 
-def fetch_history(symbol: str, start_date: str = "2024-01-01", end_date: str | None = None) -> pd.DataFrame:
-    """Lấy dữ liệu lịch sử ngày trực tiếp từ API VCI bằng requests + pandas."""
-    if end_date is None:
-        end_date = datetime.now().strftime("%Y-%m-%d")
-
+def fetch_history(symbol: str, end_date: str | None = None, count_back: int = 750) -> pd.DataFrame:
+    """Lấy dữ liệu lịch sử ngày trực tiếp từ API OHLCChart của VCI."""
     payload = {
         "timeFrame": "ONE_DAY",
         "symbols": [symbol],
-        "from": _to_unix_ts(start_date, end_of_day=False),
-        "to": _to_unix_ts(end_date, end_of_day=True),
+        "to": _to_end_stamp(end_date),
+        "countBack": count_back,
     }
 
     resp = requests.post(VCI_CHART_URL, json=payload, headers=VCI_HEADERS, timeout=20)
     resp.raise_for_status()
     raw = resp.json()
+
+    if isinstance(raw, dict) and "data" in raw:
+        raw = raw["data"]
 
     item = raw[0] if isinstance(raw, list) and raw else raw
     if not isinstance(item, dict) or not item.get("t"):
