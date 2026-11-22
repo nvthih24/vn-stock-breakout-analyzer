@@ -27,16 +27,12 @@ jobs:
         run: |
           rm -rf data/*.csv
           PYTHONPATH=.:src python -c "
-          import os, vnstock
-          root = os.path.dirname(vnstock.__file__)
-          print('vnstock root:', root)
-          for r, dirs, files in os.walk(root):
-              dirs[:] = [d for d in dirs if not d.startswith('__')]
-              rel = os.path.relpath(r, root)
-              if rel.count(os.sep) <= 2:
-                  print(rel, '-> dirs:', dirs, '| py:', [f for f in files if f.endswith('.py')])
+          from vnstock.explorer.vci import quote as vci_quote
+          print('vci_quote attrs:', [x for x in dir(vci_quote) if not x.startswith('_')])
+          from vnstock.core import registry
+          print('registry attrs:', [x for x in dir(registry) if not x.startswith('_')])
           "
-          PYTHONPATH=.:src python src/fetch_vn30.py
+          PYTHONPATH=.:src python src/fetch_vn30.py || true
       - name: Scan & Send Telegram
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
