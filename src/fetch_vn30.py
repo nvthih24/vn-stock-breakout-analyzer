@@ -1,29 +1,8 @@
 import os
-import sys
 import time
 from datetime import datetime
-from unittest.mock import MagicMock
 import pandas as pd
-
-# Mock thư viện chart để vnstock nạp đầy đủ explorer/VCI trên runner
-sys.modules.setdefault("vnstock_ezchart", MagicMock())
-sys.modules.setdefault("vnstock_chart", MagicMock())
-
-# Tắt thông báo telemetry để terminal gọn gàng
-os.environ["VNSTOCK_TELEMETRY"] = "off"
-
-from vnstock.explorer.vci import quote as vci_quote
-from vnstock.explorer.vci.quote import Quote as VCIQuote
-
-# Nếu optimize_execution bị mock thành MagicMock, trả về hàm pass-through để gọi thực thi bình thường
-if isinstance(getattr(vci_quote, "optimize_execution", None), MagicMock):
-    def _passthrough_optimize_execution(func=None, *args, **kwargs):
-        if callable(func):
-            def _wrapper(*f_args, **f_kwargs):
-                return func(*f_args, **f_kwargs)
-            return _wrapper
-        return lambda f: f
-    vci_quote.optimize_execution = _passthrough_optimize_execution
+import requests
 
 VN30_SYMBOLS = [
     "ACB", "BCM", "BID", "BVH", "CTG", "FPT", "GAS", "GVR", "HDB", "HPG",
@@ -31,24 +10,64 @@ VN30_SYMBOLS = [
     "TCB", "TPB", "VCB", "VHM", "VIB", "VIC", "VJC", "VNM", "VPB", "VRE"
 ]
 
-def fetch_history(symbol, start_date="2024-01-01", end_date=None):
-    """Lấy dữ liệu lịch sử ngày từ VCIQuote"""
+VCI_CHART_URL = "https://trading.vietcap.com.vn/api/chart/OHChart/gap-chart"
+VCI_HEADERS = {
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "application/json, text/plain, */*",
+    "Content-Type": "application/json",
+    "Origin": "https://trading.vietcap.com.vn",
+    "Referer": "https://trading.vietcap.com.vn/",
+}
+
+
+def _to_unix_ts(date_str: str, end_of_day: bool = False) -> int:
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    if end_of_day:
+        dt = dt.replace(hour=23, minute=59, second=59)
+    return int(dt.timestamp())
+
+
+def fetch_history(symbol: str, start_date: str = "2024-01-01", end_date: str | None = None) -> pd.DataFrame:
+    """Lấy dữ liệu lịch sử ngày trực tiếp từ API VCI bằng requests + pandas."""
     if end_date is None:
         end_date = datetime.now().strftime("%Y-%m-%d")
 
-    q = VCIQuote(symbol=symbol)
-    df = q.history(start=start_date, end=end_date, interval="1D")
+    payload = {
+        "timeFrame": "ONE_DAY",
+        "symbols": [symbol],
+        "from": _to_unix_ts(start_date, end_of_day=False),
+        "to": _to_unix_ts(end_date, end_of_day=True),
+    }
 
-    # Phòng trường hợp decorator vẫn trả về MagicMock
-    if isinstance(df, MagicMock) and hasattr(q, "_history"):
-        df = q._history(start=start_date, end=end_date, interval="1D")
+    resp = requests.post(VCI_CHART_URL, json=payload, headers=VCI_HEADERS, timeout=20)
+    resp.raise_for_status()
+    raw = resp.json()
 
-    return df
+    item = raw[0] if isinstance(raw, list) and raw else raw
+    if not isinstance(item, dict) or not item.get("t"):
+        return pd.DataFrame()
+
+    df = pd.DataFrame({
+        "time": pd.to_datetime(item["t"], unit="s", utc=True)
+        .tz_convert("Asia/Ho_Chi_Minh")
+        .tz_localize(None),
+        "open": item.get("o", []),
+        "high": item.get("h", []),
+        "low": item.get("l", []),
+        "close": item.get("c", []),
+        "volume": item.get("v", []),
+    })
+
+    for col in ["open", "high", "low", "close", "volume"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    return df.dropna(subset=["close"]).reset_index(drop=True)
+
 
 def main():
     output_dir = "data"
     os.makedirs(output_dir, exist_ok=True)
-    
+
     print(f"=== TIẾP TỤC PIPELINE TẢI DỮ LIỆU VN30 ({len(VN30_SYMBOLS)} MÃ) ===")
     start_time = time.time()
     success_count = 0
@@ -91,8 +110,9 @@ def main():
         time.sleep(3.5)
 
     elapsed = round(time.time() - start_time, 1)
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print(f"Tổng kết: Sẵn sàng {success_count}/30 mã | Thời gian: {elapsed}s")
+
 
 if __name__ == "__main__":
     main()
