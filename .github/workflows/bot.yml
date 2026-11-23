@@ -26,7 +26,28 @@ jobs:
       - name: Fetch Market Data
         run: |
           rm -rf data/*.csv
-          PYTHONPATH=.:src python src/fetch_vn30.py
+          python -c "
+          import requests
+          from datetime import datetime
+
+          url = 'https://trading.vietcap.com.vn/api/chart/OHLCChart/gap-chart'
+          headers = {
+              'User-Agent': 'Mozilla/5.0',
+              'Accept': 'application/json, text/plain, */*',
+              'Content-Type': 'application/json',
+              'Origin': 'https://trading.vietcap.com.vn',
+              'Referer': 'https://trading.vietcap.com.vn/',
+          }
+          payload = {
+              'timeFrame': 'ONE_DAY',
+              'symbols': ['ACB'],
+              'to': int(datetime.now().replace(hour=23, minute=59, second=59).timestamp()),
+              'countBack': 10,
+          }
+          r = requests.post(url, json=payload, headers=headers, timeout=20)
+          print('Status:', r.status_code)
+          print('Text preview:', r.text[:600])
+          "
 
       - name: Scan & Send Telegram
         env:
