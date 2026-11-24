@@ -3,7 +3,7 @@ name: VN30 Quant Scanner
 on:
   schedule:
     - cron: '27 9 * * 1-5'
-  workflow_dispatch: # Cho phép bạn bấm chạy thủ công bằng tay trên Web
+  workflow_dispatch: # Cho phép bấm chạy thủ công bằng tay trên Web
 
 jobs:
   scan-market:
@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -23,13 +23,22 @@ jobs:
           pip install pandas requests mplfinance ipython tenacity pydantic beautifulsoup4 pytz openpyxl
           echo "import sys; from unittest.mock import MagicMock; sys.modules['vnai'] = MagicMock()" > src/vnai.py
 
+      - name: Set VN date
+        run: echo "RUN_DATE=$(TZ='Asia/Ho_Chi_Minh' date +%Y-%m-%d)" >> "$GITHUB_ENV"
+
+      - name: Cache VN30 market data
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: vn30-data-${{ runner.os }}-${{ env.RUN_DATE }}
+          restore-keys: |
+            vn30-data-${{ runner.os }}-
+
       - name: Fetch Market Data
-        run: |
-          rm -rf data/*.csv
-          PYTHONPATH=.:src python src/fetch_vn30.py
+        run: PYTHONPATH=.:src python src/fetch_vn30.py
 
       - name: Scan & Send Telegram
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python src/scanner.py
+        run: PYTHONPATH=.:src python src/scanner.py
