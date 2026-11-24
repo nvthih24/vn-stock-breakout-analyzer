@@ -32,7 +32,7 @@ def send_telegram_message(message: str):
 
 
 def _format_price(val: float) -> str:
-    """Định dạng giá: nếu giá lớn hơn hoặc bằng 500 thì làm tròn nguyên, nhỏ hơn thì giữ 2 số lẻ."""
+    """Định dạng giá: nếu >= 500 thì làm tròn nguyên, nhỏ hơn thì giữ 2 số lẻ."""
     if abs(val) >= 500:
         return f"{round(val):,}"
     return f"{val:,.2f}"
@@ -43,7 +43,26 @@ def _format_pct(pct: float) -> str:
     return f"{sign}{pct:.2f}%"
 
 
-def scan_market(data_dir: str = "data", rvol_min: float = 2.0, pct_min: float = 2.0):
+def _calc_trade_levels(
+    close_val: float, high_val: float, low_val: float, target_mult: float = 2.0
+) -> tuple[str, str]:
+    """Tính giá mục tiêu tham chiếu theo biên độ nến (high - low) và tỷ lệ R:R."""
+    risk = close_val - low_val
+    candle_range = high_val - low_val
+    if risk <= 0 or candle_range <= 0:
+        return "N/A", "N/A"
+
+    target_val = close_val + target_mult * candle_range
+    rr_val = (target_val - close_val) / risk
+    return _format_price(target_val), f"1:{rr_val:.2f}"
+
+
+def scan_market(
+    data_dir: str = "data",
+    rvol_min: float = 2.0,
+    pct_min: float = 2.0,
+    target_mult: float = 2.0,
+):
     print("=== 🔎 BỘ QUÉT TÍN HIỆU DÒNG TIỀN ĐỘT BIẾN (VN30) ===")
     signals = []
     watchlist_rows = []
@@ -76,6 +95,7 @@ def scan_market(data_dir: str = "data", rvol_min: float = 2.0, pct_min: float = 
             rvol = float(last_row["rvol"])
             pct = float(last_row["pct_change"])
             close_val = float(last_row["close"])
+            high_val = float(last_row["high"])
             low_val = float(last_row["low"])
             vol_val = int(last_row["volume"])
 
@@ -91,10 +111,16 @@ def scan_market(data_dir: str = "data", rvol_min: float = 2.0, pct_min: float = 
             })
 
             if rvol >= rvol_min and pct >= pct_min:
+                target_str, rr_str = _calc_trade_levels(
+                    close_val=close_val,
+                    high_val=high_val,
+                    low_val=low_val,
+                    target_mult=target_mult,
+                )
                 signals.append(
                     f"🟢 <b>{symbol}</b> — Giá: <code>{_format_price(close_val)}</code> (<b>{_format_pct(pct)}</b>)\n"
                     f"• Vol: <code>{vol_val:,}</code> (<b>RVol: {rvol:.2f}x</b>)\n"
-                    f"• Cắt lỗ (thủng đáy nến): <code>{_format_price(low_val)}</code>"
+                    f"• Mục tiêu: <code>{target_str}</code> | Cắt lỗ: <code>{_format_price(low_val)}</code> | R:R: <code>{rr_str}</code>"
                 )
         except Exception as e:
             print(f"[!] Lỗi xử lý {symbol}: {e}")
@@ -109,7 +135,7 @@ def scan_market(data_dir: str = "data", rvol_min: float = 2.0, pct_min: float = 
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"{body}\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"<i>Báo cáo tự động cuối phiên (EOD). Tham khảo quản trị rủi ro.</i>"
+            f"<i>Mục tiêu tính theo {target_mult:.1f}x biên độ nến. Chỉ mang tính tham khảo.</i>"
         )
     else:
         top3 = sorted(watchlist_rows, key=lambda x: x["rvol"], reverse=True)[:3]
