@@ -27,15 +27,6 @@ def _to_end_stamp(end_date: str | None = None) -> int:
         dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
     return int(dt.timestamp())
 
-def _parse_ts_series(ts_values) -> pd.Series:
-    s = pd.to_numeric(pd.Series(ts_values), errors="coerce").dropna()
-    if s.empty:
-        return pd.Series(dtype="datetime64[ns]")
-    max_val = s.max()
-    # Tự nhận diện giây (10 chữ số) vs mili-giây (13 chữ số)
-    unit = "ms" if max_val > 1e11 else "s"
-    dt = pd.to_datetime(s, unit=unit, utc=True, errors="coerce")
-    return dt.dt.tz_convert("Asia/Ho_Chi_Minh").dt.tz_localize(None)
 
 def fetch_history(symbol: str, end_date: str | None = None, count_back: int = 750) -> pd.DataFrame:
     """Lấy dữ liệu lịch sử ngày trực tiếp từ API OHLCChart của VCI."""
@@ -53,34 +44,31 @@ def fetch_history(symbol: str, end_date: str | None = None, count_back: int = 75
     if isinstance(raw, dict) and "data" in raw:
         raw = raw["data"]
 
-    if not raw:
+    item = raw[0] if isinstance(raw, list) and raw else raw
+    if not isinstance(item, dict) or not item.get("t"):
         return pd.DataFrame()
 
-    # Trường hợp 1: API trả danh sách từng nến [{"t": ..., "o": ..., "h": ..., "l": ..., "c": ..., "v": ...}]
-    if isinstance(raw, list) and isinstance(raw[0], dict) and "t" in raw[0]:
-        df = pd.DataFrame(raw)
-        rename_map = {"t": "time", "o": "open", "h": "high", "l": "low", "c": "close", "v": "volume"}
-        df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
-        df["time"] = _parse_ts_series(df["time"])
-    else:
-        # Trường hợp 2: API trả dict hoặc list chứa dict dạng cột {"t": [...], "o": [...], ...}
-        item = raw[0] if isinstance(raw, list) else raw
-        if not isinstance(item, dict) or not item.get("t"):
-            return pd.DataFrame()
-        df = pd.DataFrame({
-            "time": _parse_ts_series(item.get("t", [])),
-            "open": item.get("o", []),
-            "high": item.get("h", []),
-            "low": item.get("l", []),
-            "close": item.get("c", []),
-            "volume": item.get("v", []),
-        })
+    ts_num = pd.to_numeric(pd.Series(item.get("t", [])), errors="coerce")
+    df = pd.DataFrame({
+        "time": pd.to_datetime(ts_num, unit="s", utc=True, errors="coerce")
+        .dt.tz_convert("Asia/Ho_Chi_Minh")
+        .dt.tz_localize(None),
+        "open": item.get("o", []),
+        "high": item.get("h", []),
+        "low": item.get("l", []),
+        "close": item.get("c", []),
+        "volume": item.get("v", []),
+    })
 
     for col in ["open", "high", "low", "close", "volume"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+        df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    return df.dropna(subset=["time", "close"]).sort_values("time").reset_index(drop=True)
+    return (
+        df.dropna(subset=["time", "close"])
+        .sort_values("time")
+        .drop_duplicates(subset=["time"], keep="last")
+        .reset_index(drop=True)
+    )
 
 
 def main():
