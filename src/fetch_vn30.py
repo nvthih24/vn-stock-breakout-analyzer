@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import pandas as pd
 import requests
 
@@ -12,51 +12,43 @@ VN30_SYMBOLS = [
 
 VCI_CHART_URL = "https://trading.vietcap.com.vn/api/chart/OHLCChart/gap-chart"
 VCI_HEADERS = {
-    "User-Agent": "Mozilla/5.0",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Accept": "application/json, text/plain, */*",
     "Content-Type": "application/json",
     "Origin": "https://trading.vietcap.com.vn",
     "Referer": "https://trading.vietcap.com.vn/",
 }
-VN_TZ = timezone(timedelta(hours=7))
-
-
-def _now_vn() -> datetime:
-    return datetime.now(VN_TZ)
 
 
 def _to_end_stamp(end_date: str | None = None) -> int:
     if end_date is None:
-        dt = _now_vn().replace(hour=23, minute=59, second=59)
+        dt = datetime.now().replace(hour=23, minute=59, second=59)
     else:
-        dt = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=VN_TZ, hour=23, minute=59, second=59)
+        dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
     return int(dt.timestamp())
 
 
-def get_expected_session_date(now_vn: datetime | None = None) -> str:
-    """Tính ngày phiên giao dịch mới nhất kỳ vọng theo giờ Việt Nam (+07)."""
-    dt = now_vn or _now_vn()
+def get_expected_session_date(now_dt: datetime | None = None) -> str:
+    """Tính ngày phiên giao dịch mới nhất kỳ vọng (lùi về Thứ Sáu nếu cuối tuần)."""
+    dt = now_dt or datetime.now()
     d = dt.date()
 
-    # Cuối tuần: lùi về Thứ Sáu
     if d.weekday() == 5:  # Thứ 7
         d = d - timedelta(days=1)
     elif d.weekday() == 6:  # Chủ Nhật
         d = d - timedelta(days=2)
-    else:
-        # Ngày thường: nếu trước 15:00 thì dữ liệu EOD của phiên hôm nay có thể chưa chốt
-        if dt.hour < 15:
+    elif dt.hour < 15:
+        d = d - timedelta(days=1)
+        if d.weekday() == 6:
+            d = d - timedelta(days=2)
+        elif d.weekday() == 5:
             d = d - timedelta(days=1)
-            if d.weekday() == 6:
-                d = d - timedelta(days=2)
-            elif d.weekday() == 5:
-                d = d - timedelta(days=1)
 
     return d.strftime("%Y-%m-%d")
 
 
 def is_csv_up_to_date(file_path: str, expected_date: str) -> tuple[bool, str | None]:
-    """Kiểm tra file CSV có tồn tại, đọc được và có nến mới nhất >= expected_date hay không."""
+    """Chỉ bỏ qua file CSV khi file đã có nến cập nhật đến phiên giao dịch mới nhất."""
     if not os.path.exists(file_path) or os.path.getsize(file_path) < 100:
         return False, None
 
@@ -116,58 +108,3 @@ def fetch_history(symbol: str, end_date: str | None = None, count_back: int = 75
         .drop_duplicates(subset=["time"], keep="last")
         .reset_index(drop=True)
     )
-
-
-def main():
-    output_dir = "data"
-    os.makedirs(output_dir, exist_ok=True)
-
-    expected_date = get_expected_session_date()
-    print(f"=== PIPELINE TẢI DỮ LIỆU VN30 ({len(VN30_SYMBOLS)} MÃ) | PHIÊN KỲ VỌNG: {expected_date} ===")
-    start_time = time.time()
-    success_count = 0
-
-    for idx, sym in enumerate(VN30_SYMBOLS, 1):
-        file_path = os.path.join(output_dir, f"{sym}_data.csv")
-
-        up_to_date, last_date = is_csv_up_to_date(file_path, expected_date)
-        if up_to_date:
-            print(f"[{idx:02d}/30] {sym}: ⏩ Đã cập nhật đến {last_date}, bỏ qua.")
-            success_count += 1
-            continue
-
-        reason = f"chỉ có dữ liệu tới {last_date}" if last_date else "chưa có file hoặc file lỗi"
-        print(f"[{idx:02d}/30] Đang tải {sym} ({reason})...", end=" ", flush=True)
-
-        max_retries = 2
-        for attempt in range(max_retries + 1):
-            try:
-                df = fetch_history(sym)
-                if df is not None and not df.empty:
-                    df.to_csv(file_path, index=False, encoding="utf-8-sig")
-                    new_last = pd.to_datetime(df["time"]).max().strftime("%Y-%m-%d")
-                    print(f"✅ Hoàn tất ({len(df)} phiên, mới nhất: {new_last})")
-                    success_count += 1
-                    break
-                else:
-                    print("❌ Không có dữ liệu")
-                    break
-            except Exception as e:
-                err_msg = str(e)
-                is_rate_limit = any(k in err_msg.lower() for k in ("rate limit", "429", "too many requests"))
-                if is_rate_limit and attempt < max_retries:
-                    print("⏳ Chạm giới hạn, nghỉ 25s trước khi thử lại...")
-                    time.sleep(25)
-                else:
-                    print(f"❌ Lỗi: {err_msg}")
-                    break
-
-        time.sleep(3.5)
-
-    elapsed = round(time.time() - start_time, 1)
-    print("\n" + "=" * 50)
-    print(f"Tổng kết: Sẵn sàng {success_count}/30 mã | Thời gian: {elapsed}s")
-
-
-if __name__ == "__main__":
-    main()
