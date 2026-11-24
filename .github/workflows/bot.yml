@@ -30,7 +30,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data
-          key: vn30-data-${{ runner.os }}-${{ env.RUN_DATE }}-fresh1
+          key: vn30-data-${{ runner.os }}-${{ env.RUN_DATE }}
           restore-keys: |
             vn30-data-${{ runner.os }}-
 
